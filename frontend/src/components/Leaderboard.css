@@ -1,0 +1,186 @@
+.leaderboard-container {
+  color: white;
+  text-align: center;
+}
+
+.leaderboard-container h2 {
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+}
+
+.leaderboard-filters {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.filter-group select {
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1rem;
+}
+
+.filter-group select:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.leaderboard-table-container {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow-x: auto;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: white;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.leaderboard-table th {
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.leaderboard-table tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rank {
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.player {
+  font-weight: bold;
+}
+
+.difficulty-badge {
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.difficulty-badge.easy {
+  background: #28a745;
+  color: white;
+}
+
+.difficulty-badge.medium {
+  background: #ffc107;
+  color: #333;
+}
+
+.difficulty-badge.hard {
+  background: #dc3545;
+  color: white;
+}
+
+.score {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #28a745;
+}
+
+.time {
+  font-family: monospace;
+  font-size: 1.1rem;
+}
+
+.date {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+/* Top 3 rankings */
+.rank-1 {
+  background: linear-gradient(45deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
+}
+
+.rank-2 {
+  background: linear-gradient(45deg, rgba(192, 192, 192, 0.2), rgba(192, 192, 192, 0.1));
+}
+
+.rank-3 {
+  background: linear-gradient(45deg, rgba(205, 127, 50, 0.2), rgba(205, 127, 50, 0.1));
+}
+
+.rank-1 .rank::before {
+  content: "🥇 ";
+}
+
+.rank-2 .rank::before {
+  content: "🥈 ";
+}
+
+.rank-3 .rank::before {
+  content: "🥉 ";
+}
+
+.no-data {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 3rem;
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.no-data p {
+  font-size: 1.2rem;
+  opacity: 0.8;
+}
+
+.error-message {
+  background: rgba(220, 53, 69, 0.2);
+  color: #ff6b6b;
+  padding: 1rem;
+  border-radius: 5px;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+@media (max-width: 768px) {
+  .leaderboard-filters {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .leaderboard-table th {
+    font-size: 1rem;
+  }
+} 
