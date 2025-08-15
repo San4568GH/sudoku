@@ -53,14 +53,14 @@ func BoardToString(board Board) string {
 func (s *Service) IsValidMove(board Board, row, col, value int) bool {
 	// Check row
 	for j := 0; j < 9; j++ {
-		if j != col && board[row][j] == value {
+		if board[row][j] == value && j != col {
 			return false
 		}
 	}
 
 	// Check column
 	for i := 0; i < 9; i++ {
-		if i != row && board[i][col] == value {
+		if board[i][col] == value && i != row {
 			return false
 		}
 	}
@@ -70,7 +70,7 @@ func (s *Service) IsValidMove(board Board, row, col, value int) bool {
 	boxCol := (col / 3) * 3
 	for i := boxRow; i < boxRow+3; i++ {
 		for j := boxCol; j < boxCol+3; j++ {
-			if (i != row || j != col) && board[i][j] == value {
+			if board[i][j] == value && (i != row || j != col) {
 				return false
 			}
 		}
@@ -181,13 +181,32 @@ func (s *Service) FindSolvableCell(board Board) (*Move, error) {
 	}
 
 	if len(bestCells) == 0 {
+		// If no simple moves, use backtracking to find the next logical step
+		solvedBoard, success := s.SolvePuzzle(board)
+		if !success {
+			return nil, errors.New("puzzle cannot be solved")
+		}
+
+		// Find the first empty cell and return the solved value
+		for r := 0; r < 9; r++ {
+			for c := 0; c < 9; c++ {
+				if board[r][c] == 0 {
+					return &Move{
+						Row:    r,
+						Col:    c,
+						Value:  solvedBoard[r][c],
+						Reason: "Advanced Step",
+					}, nil
+				}
+			}
+		}
 		return nil, errors.New("no solvable cells found")
 	}
 
 	// Pick a random cell from the best candidates
 	rand.Seed(time.Now().UnixNano())
 	selectedCell := bestCells[rand.Intn(len(bestCells))]
-	
+
 	// For cells with multiple candidates, pick the first valid one
 	// (in a real hint system, we might use more sophisticated logic)
 	return &Move{
@@ -198,6 +217,97 @@ func (s *Service) FindSolvableCell(board Board) (*Move, error) {
 	}, nil
 }
 
+// Find hidden singles (cells where a candidate is unique in a row, column, or box)
+func (s *Service) FindHiddenSingles(board Board) []Move {
+	var moves []Move
+	// Check rows
+	for r := 0; r < 9; r++ {
+		for val := 1; val <= 9; val++ {
+			count := 0
+			colPos := -1
+			for c := 0; c < 9; c++ {
+				if board[r][c] == 0 {
+					candidates := s.GetCandidates(board, r, c)
+					for _, cand := range candidates {
+						if cand == val {
+							count++
+							colPos = c
+						}
+					}
+				}
+			}
+			if count == 1 {
+				moves = append(moves, Move{
+					Row:    r,
+					Col:    colPos,
+					Value:  val,
+					Reason: "Hidden Single in Row",
+				})
+			}
+		}
+	}
+
+	// Check columns
+	for c := 0; c < 9; c++ {
+		for val := 1; val <= 9; val++ {
+			count := 0
+			rowPos := -1
+			for r := 0; r < 9; r++ {
+				if board[r][c] == 0 {
+					candidates := s.GetCandidates(board, r, c)
+					for _, cand := range candidates {
+						if cand == val {
+							count++
+							rowPos = r
+						}
+					}
+				}
+			}
+			if count == 1 {
+				moves = append(moves, Move{
+					Row:    rowPos,
+					Col:    c,
+					Value:  val,
+					Reason: "Hidden Single in Column",
+				})
+			}
+		}
+	}
+
+	// Check boxes
+	for boxRow := 0; boxRow < 9; boxRow += 3 {
+		for boxCol := 0; boxCol < 9; boxCol += 3 {
+			for val := 1; val <= 9; val++ {
+				count := 0
+				rowPos, colPos := -1, -1
+				for r := boxRow; r < boxRow+3; r++ {
+					for c := boxCol; c < boxCol+3; c++ {
+						if board[r][c] == 0 {
+							candidates := s.GetCandidates(board, r, c)
+							for _, cand := range candidates {
+								if cand == val {
+									count++
+									rowPos, colPos = r, c
+								}
+							}
+						}
+					}
+				}
+				if count == 1 {
+					moves = append(moves, Move{
+						Row:    rowPos,
+						Col:    colPos,
+						Value:  val,
+						Reason: "Hidden Single in Box",
+					})
+				}
+			}
+		}
+	}
+
+	return moves
+}
+
 // Solve puzzle step-by-step
 func (s *Service) SolveStep(board Board) (*Move, error) {
 	// 1. Find Naked Singles
@@ -206,26 +316,33 @@ func (s *Service) SolveStep(board Board) (*Move, error) {
 		return &nakedSingles[0], nil
 	}
 
-	// 2. Find Hidden Singles (in rows, columns, and boxes)
-	// This is a more complex technique, so we'll implement a simplified version for now.
-	// We'll find the first empty cell and return a valid candidate.
+	// 2. Find Hidden Singles
+	hiddenSingles := s.FindHiddenSingles(board)
+	if len(hiddenSingles) > 0 {
+		return &hiddenSingles[0], nil
+	}
+
+	// 3. If no simple moves, use backtracking to find the next logical step
+	solvedBoard, success := s.SolvePuzzle(board)
+	if !success {
+		return nil, errors.New("puzzle cannot be solved")
+	}
+
+	// Find the first empty cell and return the solved value
 	for r := 0; r < 9; r++ {
 		for c := 0; c < 9; c++ {
 			if board[r][c] == 0 {
-				candidates := s.GetCandidates(board, r, c)
-				if len(candidates) > 0 {
-					return &Move{
-						Row:    r,
-						Col:    c,
-						Value:  candidates[0],
-						Reason: "Hidden Single (Simplified)",
-					}, nil
-				}
+				return &Move{
+					Row:    r,
+					Col:    c,
+					Value:  solvedBoard[r][c],
+					Reason: "Advanced Step",
+				}, nil
 			}
 		}
 	}
 
-	return nil, errors.New("no solvable moves found")
+	return nil, errors.New("could not fill any cell")
 }
 
 // Solve puzzle using backtracking
@@ -252,6 +369,40 @@ func (s *Service) solve(board *Board) bool {
 						board[i][j] = 0
 					}
 				}
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (s *Service) solveRandom(board *Board) bool {
+	for i := 0; i < 9; i++ {
+		for j := 0; j < 9; j++ {
+			if board[i][j] == 0 {
+				numbers := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+				rand.Shuffle(len(numbers), func(i, j int) { numbers[i], numbers[j] = numbers[j], numbers[i] })
+				for _, value := range numbers {
+					if s.IsValidMove(*board, i, j, value) {
+						board[i][j] = value
+						if s.solveRandom(board) {
+							return true
+						}
+						board[i][j] = 0
+					}
+				}
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// IsSolved checks if the final board matches the solution board.
+func IsSolved(finalBoard, solutionBoard Board) bool {
+	for i := 0; i < 9; i++ {
+		for j := 0; j < 9; j++ {
+			if finalBoard[i][j] != solutionBoard[i][j] {
 				return false
 			}
 		}
@@ -311,13 +462,13 @@ func (s *Service) ValidateSolution(board Board) bool {
 }
 
 // Calculate score based on correct moves
-func (s *Service) CalculateScore(initialBoard, finalBoard Board) int {
+func (s *Service) CalculateScore(initialBoard, finalBoard, solutionBoard Board) int {
 	score := 0
 	for i := 0; i < 9; i++ {
 		for j := 0; j < 9; j++ {
 			if initialBoard[i][j] == 0 && finalBoard[i][j] != 0 {
-				// Check if the move is correct
-				if s.IsValidMove(finalBoard, i, j, finalBoard[i][j]) {
+				// Check if the move is correct against the solution
+				if finalBoard[i][j] == solutionBoard[i][j] {
 					score += 10
 				}
 			}
@@ -383,23 +534,21 @@ func (s *Service) GeneratePuzzle(difficulty models.Difficulty) (Board, Board, er
 	var vacantTiles int
 	switch difficulty {
 	case models.Easy:
-		vacantTiles = 45 // Fewer vacant tiles for easy puzzles
+		vacantTiles = 35 // Fewer vacant tiles for easy puzzles
 	case models.Medium:
-		vacantTiles = 54 // Moderate vacant tiles for medium puzzles
+		vacantTiles = 45 // Moderate vacant tiles for medium puzzles
 	case models.Hard:
-		vacantTiles = 63 // Most vacant tiles for hard puzzles
+		vacantTiles = 54 // Most vacant tiles for hard puzzles
 	default:
 		return Board{}, Board{}, errors.New("invalid difficulty")
 	}
 
 	// Generate a fully solved board
 	var solved Board
-	if !s.solve(&solved) {
+	rand.Seed(time.Now().UnixNano())
+	if !s.solveRandom(&solved) {
 		return Board{}, Board{}, errors.New("failed to generate solved board")
 	}
-
-	// Randomize the solved board
-	s.RandomizeBoard(&solved)
 
 	// Create a puzzle by removing tiles while ensuring a single solution
 	puzzle := solved
@@ -433,10 +582,13 @@ func (s *Service) countSolutions(board *Board, count *int) bool {
 				for value := 1; value <= 9; value++ {
 					if s.IsValidMove(*board, i, j, value) {
 						board[i][j] = value
-						if s.countSolutions(board, count) {
-							return true
-						}
+						// Recurse and then always backtrack
+						finished := s.countSolutions(board, count)
 						board[i][j] = 0
+
+						if finished {
+							return true // Propagate early exit
+						}
 					}
 				}
 				return false

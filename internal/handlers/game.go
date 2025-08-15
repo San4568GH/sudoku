@@ -99,7 +99,7 @@ func (h *GameHandler) StartGame(w http.ResponseWriter, r *http.Request) {
 		PuzzleID:  puzzle.ID,
 		Mode:      mode,
 		StartedAt: time.Now(),
-		FinalGrid: puzzle.StartingGrid,
+		FinalGrid: puzzle.StartingGrid, // Initialize FinalGrid with the puzzle's starting state
 	}
 
 	if err := h.db.Create(gameResult).Error; err != nil {
@@ -148,14 +148,16 @@ func (h *GameHandler) SubmitGame(w http.ResponseWriter, r *http.Request) {
 	gameResult.CompletedAt = &now
 
 	// Validate solution
-	board := sudoku.StringToBoard(req.FinalGrid)
-	if h.sudokuService.ValidateSolution(board) {
-		gameResult.Completed = true
+	isCorrect := sudoku.IsSolved(sudoku.StringToBoard(req.FinalGrid), sudoku.StringToBoard(gameResult.Puzzle.Solution))
+	gameResult.Completed = isCorrect
 
+	if isCorrect {
 		// Calculate score for play mode
 		if gameResult.Mode == models.PlayMode && !req.UsedHints && !req.UsedAutoSolve {
 			initialBoard := sudoku.StringToBoard(gameResult.Puzzle.StartingGrid)
-			gameResult.Score = h.sudokuService.CalculateScore(initialBoard, board)
+			finalBoard := sudoku.StringToBoard(req.FinalGrid)
+			solutionBoard := sudoku.StringToBoard(gameResult.Puzzle.Solution)
+			gameResult.Score = h.sudokuService.CalculateScore(initialBoard, finalBoard, solutionBoard)
 
 			// Update user stats
 			h.db.Model(&models.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
@@ -176,7 +178,7 @@ func (h *GameHandler) SubmitGame(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := map[string]interface{}{
-		"completed":    gameResult.Completed,
+		"correct":      isCorrect,
 		"score":        gameResult.Score,
 		"disqualified": gameResult.Disqualified,
 		"time_seconds": gameResult.TimeSeconds,
@@ -192,6 +194,7 @@ func (h *GameHandler) GetHint(w http.ResponseWriter, r *http.Request) {
 		Mode         string `json:"mode"` // "find_cell" or "fill_cell"
 		Row          *int   `json:"row,omitempty"`
 		Col          *int   `json:"col,omitempty"`
+		CurrentGrid  string `json:"current_grid"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -213,7 +216,7 @@ func (h *GameHandler) GetHint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	board := sudoku.StringToBoard(gameResult.FinalGrid)
+	board := sudoku.StringToBoard(req.CurrentGrid)
 	var hint *sudoku.Move
 	var err error
 
@@ -230,7 +233,7 @@ func (h *GameHandler) GetHint(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Row and Col are required for fill_cell mode", http.StatusBadRequest)
 			return
 		}
-		
+
 		hint, err = h.sudokuService.GetHint(board, *req.Row, *req.Col)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)

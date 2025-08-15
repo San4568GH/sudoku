@@ -47,6 +47,10 @@ function Game() {
   const [showTechnique, setShowTechnique] = useState(null);
   const [lastSolvedCell, setLastSolvedCell] = useState(null);
 
+  const isBoardFull = () => {
+    return gameState.board.every(row => row.every(cell => cell !== 0));
+  };
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -146,28 +150,50 @@ function Game() {
     }));
     
     setSelectedCell(null);
+    setShowTechnique(null); // Hide technique info on number input
   };
 
   const handleKeyPress = (e) => {
     if (!selectedCell) return;
-    
+
+    const { row, col } = selectedCell;
     const key = e.key;
+
     if (key >= '1' && key <= '9') {
       handleNumberInput(parseInt(key));
     } else if (key === 'Backspace' || key === 'Delete' || key === '0') {
       handleNumberInput(0);
+    } else if (key.startsWith('Arrow')) {
+      e.preventDefault();
+      let newRow = row;
+      let newCol = col;
+
+      if (key === 'ArrowUp') newRow = Math.max(0, row - 1);
+      if (key === 'ArrowDown') newRow = Math.min(8, row + 1);
+      if (key === 'ArrowLeft') newCol = Math.max(0, col - 1);
+      if (key === 'ArrowRight') newCol = Math.min(8, col + 1);
+
+      if (gameState.initialBoard[newRow][newCol] === 0) {
+        setSelectedCell({ row: newRow, col: newCol });
+      }
     }
   };
 
   const getHint = async () => {
-    if (gameCompleted) return;
+    if (gameCompleted || isBoardFull()) {
+      setError('All cells are already filled.');
+      return;
+    }
+    
+    setShowTechnique(null); // Hide technique info on hint
     
     try {
       if (hintState.step === 'none') {
         // Step 1: Find a solvable cell to highlight
         const response = await axios.post('/game/hint', {
           game_result_id: gameState.gameResultId,
-          mode: 'find_cell'
+          mode: 'find_cell',
+          current_grid: gridToString(gameState.board)
         });
         
         const { row, col } = response.data;
@@ -184,7 +210,8 @@ function Game() {
           game_result_id: gameState.gameResultId,
           mode: 'fill_cell',
           row,
-          col
+          col,
+          current_grid: gridToString(gameState.board)
         });
         
         const { value } = response.data;
@@ -215,6 +242,19 @@ function Game() {
   };
 
   const solveStep = async () => {
+    if (isBoardFull()) {
+      setError('All cells are already filled.');
+      return;
+    }
+    
+    // Unhighlight hint cell if a hint is active
+    if (hintState.step === 'highlighted') {
+      setHintState({
+        step: 'none',
+        highlightedCell: null
+      });
+    }
+    
     try {
       const response = await axios.post('/game/solve-step', {
         game_result_id: gameState.gameResultId
@@ -259,6 +299,14 @@ function Game() {
   };
 
   const submitGame = async () => {
+    const isFull = isBoardFull();
+    if (!isFull) {
+      const userConfirmed = window.confirm('The board is not completely filled. Are you sure you want to submit?');
+      if (!userConfirmed) {
+        return;
+      }
+    }
+    
     try {
       const response = await axios.post('/game/submit', {
         game_result_id: gameState.gameResultId,
@@ -268,14 +316,11 @@ function Game() {
         used_auto_solve: gameState.usedAutoSolve
       });
       
-      setGameCompleted(true);
-      
-      if (response.data.completed) {
-        alert(`Game completed! Score: ${response.data.score}, Time: ${formatTime(response.data.time_seconds)}`);
-      } else if (response.data.disqualified) {
-        alert('Game completed but disqualified due to hints or auto-solve usage');
+      if (response.data.correct) {
+        setGameCompleted(true);
+        alert(`Congratulations! Your solution is correct. Score: ${response.data.score}, Time: ${formatTime(response.data.time_seconds)}`);
       } else {
-        alert('Game submitted but not completed correctly');
+        alert('Your solution is incorrect. Please review your answers.');
       }
     } catch (err) {
       setError(err.response?.data || 'Failed to submit game');
@@ -388,7 +433,7 @@ function Game() {
   }
 
   return (
-    <Container size="lg" style={{ textAlign: 'center', color: 'white' }}>
+    <Container size="xl" style={{ textAlign: 'center', color: 'white' }}>
       <Stack gap="xl">
         <div>
           <Title order={2} mb="md">🎮 Sudoku Game</Title>
@@ -421,63 +466,75 @@ function Game() {
           </Group>
         </div>
 
-        <Box mb="xl">
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(9, 1fr)',
-            gap: '1px',
-            backgroundColor: '#333',
-            border: '2px solid #333',
-            maxWidth: '450px',
-            margin: '0 auto'
-          }} onKeyDown={handleKeyPress} tabIndex={0}>
-            {gameState.board.map((row, rowIndex) => (
-              row.map((cell, colIndex) => {
-                const isInitial = isCellInitial(rowIndex, colIndex);
-                const isSelected = isCellSelected(rowIndex, colIndex);
-                const isHintHighlighted = isCellHintHighlighted(rowIndex, colIndex);
-                const isLastSolved = isCellLastSolved(rowIndex, colIndex);
-                
-                return (
-                  <input
-                    key={`${rowIndex}-${colIndex}`}
-                    type="text"
-                    style={{
-                      width: '100%',
-                      height: '50px',
-                      border: 'none',
-                      textAlign: 'center',
-                      fontSize: '18px',
-                      fontWeight: 'bold',
-                      backgroundColor: isInitial ? '#f5f5f5' : 
-                                    isLastSolved ? '#d4edda' :
-                                    isHintHighlighted ? '#fff3e0' :
-                                    isSelected ? '#e3f2fd' : 'white',
-                      color: isInitial ? '#333' : 
-                             isLastSolved ? '#155724' : 
-                             '#333',
-                      cursor: isInitial ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s',
-                      borderRight: (colIndex + 1) % 3 === 0 && colIndex !== 8 ? '2px solid #333' : 'none',
-                      borderBottom: Math.floor(rowIndex / 3) === 0 && rowIndex === 2 || 
-                                   Math.floor(rowIndex / 3) === 1 && rowIndex === 5 ? '2px solid #333' : 'none',
-                      outline: isSelected ? '2px solid #007bff' : 'none',
-                      animation: isHintHighlighted ? 'hint-pulse 1.5s ease-in-out infinite' : 
-                                isLastSolved ? 'fade-in 0.5s ease-in-out' : 'none'
-                    }}
-                    value={cell === 0 ? '' : cell}
-                    readOnly={isInitial}
-                    onClick={() => handleCellClick(rowIndex, colIndex)}
-                    maxLength={1}
-                  />
-                );
-              })
-            ))}
-          </div>
-        </Box>
+        <SimpleGrid cols={showTechnique ? 2 : 1} spacing="xl" verticalSpacing="xs">
+          <Box>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(9, 1fr)',
+              gap: '1px',
+              backgroundColor: '#333',
+              border: '2px solid #333',
+              maxWidth: '450px',
+              margin: '0 auto'
+            }} onKeyDown={handleKeyPress} tabIndex={0}>
+              {gameState.board.map((row, rowIndex) => (
+                row.map((cell, colIndex) => {
+                  const isInitial = isCellInitial(rowIndex, colIndex);
+                  const isSelected = isCellSelected(rowIndex, colIndex);
+                  const isHintHighlighted = isCellHintHighlighted(rowIndex, colIndex);
+                  const isLastSolved = isCellLastSolved(rowIndex, colIndex);
+                  
+                  return (
+                    <input
+                      key={`${rowIndex}-${colIndex}`}
+                      type="text"
+                      style={{
+                        width: '100%',
+                        height: '50px',
+                        border: 'none',
+                        textAlign: 'center',
+                        fontSize: '18px',
+                        fontWeight: 'bold',
+                        backgroundColor: isInitial ? '#f5f5f5' : 
+                                      isLastSolved ? '#d4edda' :
+                                      isHintHighlighted ? '#fff3e0' :
+                                      isSelected ? '#e3f2fd' : 'white',
+                        color: isInitial ? '#333' : 
+                               isLastSolved ? '#155724' : 
+                               '#333',
+                        cursor: isInitial ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s',
+                        borderRight: (colIndex + 1) % 3 === 0 && colIndex !== 8 ? '2px solid #333' : 'none',
+                        borderBottom: Math.floor(rowIndex / 3) === 0 && rowIndex === 2 || 
+                                     Math.floor(rowIndex / 3) === 1 && rowIndex === 5 ? '2px solid #333' : 'none',
+                        outline: isSelected ? '2px solid #007bff' : 'none',
+                        animation: isHintHighlighted ? 'hint-pulse 1.5s ease-in-out infinite' : 
+                                  isLastSolved ? 'fade-in 0.5s ease-in-out' : 'none'
+                      }}
+                      value={cell === 0 ? '' : cell}
+                      readOnly={isInitial}
+                      onClick={() => handleCellClick(rowIndex, colIndex)}
+                      maxLength={1}
+                    />
+                  );
+                })
+              ))}
+            </div>
+          </Box>
+          
+          {showTechnique && (
+            <TechniqueInfo 
+              technique={showTechnique} 
+              onClose={() => {
+                setShowTechnique(null);
+                setLastSolvedCell(null);
+              }} 
+            />
+          )}
+        </SimpleGrid>
 
-        <Stack align="center" gap="xl">
-          <SimpleGrid cols={5} spacing="sm" style={{ maxWidth: '300px' }}>
+        <Stack align="center" gap="xl" mt="md">
+          <SimpleGrid cols={5} spacing="sm" style={{ maxWidth: '450px', justifyContent: 'center' }}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
               <Button
                 key={num}
@@ -583,14 +640,6 @@ function Game() {
             {error}
           </Alert>
         )}
-        
-        <TechniqueInfo 
-          technique={showTechnique} 
-          onClose={() => {
-            setShowTechnique(null);
-            setLastSolvedCell(null);
-          }} 
-        />
       </Stack>
     </Container>
   );

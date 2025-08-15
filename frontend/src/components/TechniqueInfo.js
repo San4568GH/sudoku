@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Title, Text, Button } from '@mantine/core';
+import { Card, Title, Text, Button, Stack } from '@mantine/core';
 
 const definitions = {
   "Naked Single": "A Naked Single is a cell that has only one possible candidate. This is the easiest and most common Sudoku technique.",
@@ -8,38 +8,34 @@ const definitions = {
 };
 
 function TechniqueInfo({ technique, onClose }) {
+  if (!technique) return null;
+
   return (
-    <Modal
-      opened={!!technique}
-      onClose={onClose}
-      title={
-        <Title order={2} c="white">
-          {technique}
-        </Title>
-      }
-      centered
-      styles={{
-        content: {
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-        },
-        header: {
-          background: 'transparent',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-        },
-        close: {
-          color: 'white',
-        }
+    <Card
+      style={{
+        background: 'rgba(255, 255, 255, 0.1)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        color: 'white',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column'
       }}
+      p="xl"
+      radius="md"
     >
-      <Text size="lg" style={{ lineHeight: 1.6, marginBottom: '2rem' }} c="white">
-        {definitions[technique] || "No definition available."}
-      </Text>
-      <Button onClick={onClose} fullWidth>
-        Close
-      </Button>
-    </Modal>
+      <Stack justify="space-between" style={{ flex: 1 }}>
+        <div>
+          <Title order={3} mb="md">{technique}</Title>
+          <Text size="md" style={{ lineHeight: 1.6 }}>
+            {definitions[technique] || "No definition available."}
+          </Text>
+        </div>
+        <Button onClick={onClose} variant="outline" color="gray" mt="md">
+          Close
+        </Button>
+      </Stack>
+    </Card>
   );
 }
 
