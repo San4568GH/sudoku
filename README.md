@@ -1,4 +1,4 @@
-# 🎮 Sudoku Game
+# 🎮 SudokuPro - Play and Learn Sudoku
 
 A comprehensive Sudoku game with competitive play modes, educational features, and leaderboards. Built with Go backend and React frontend.
 
