@@ -40,7 +40,7 @@ A comprehensive Sudoku game with competitive play modes, educational features, a
 - **Framework**: React 18
 - **Routing**: React Router DOM
 - **HTTP Client**: Axios
-- **Styling**: CSS with modern glassmorphism design
+- **Styling**: CSS with modern glassmorphism design, Mantine UI for components and Stylings
 - **State Management**: React Context API
 
 ## 📋 Prerequisites
