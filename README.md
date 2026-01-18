@@ -27,17 +27,17 @@ A comprehensive Sudoku game with competitive play modes, educational features, a
 - User profiles with statistics
 - Game history tracking
 
-![Home](image.png)
+![Home](demoimages/home.png)
 
-![Modes](image-1.png)
+![Modes](demoimages/mode.png)
 
-![Step solve](image-2.png)
+![Step solve](demoimages/hint.png)
 
-![Full Solve](image-3.png)
+![Full Solve](demoimages/solve.png)
 
-![Profile](image-4.png)
+![Profile](demoimages/profile.png)
 
-![Leaderboard](image-5.png)
+![Leaderboard](demoimages/leaderboard.png)
 
 
 ## 🛠️ Tech Stack
