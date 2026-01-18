@@ -27,6 +27,19 @@ A comprehensive Sudoku game with competitive play modes, educational features, a
 - User profiles with statistics
 - Game history tracking
 
+![Home](image.png)
+
+![Modes](image-1.png)
+
+![Step solve](image-2.png)
+
+![Full Solve](image-3.png)
+
+![Profile](image-4.png)
+
+![Leaderboard](image-5.png)
+
+
 ## 🛠️ Tech Stack
 
 ### Backend
